@@ -4,7 +4,7 @@ const Contest = require('../models/Contest');
 const Problem = require('../models/Problem');
 const codeforcesAPI = require('./codeforcesAPI');
 const emailService = require('./emailService');
-const cronConfig = require('../config/cronConfig');
+const cronConfig = require('../configs/cronConfig');
 
 class CronJobService {
     constructor() {
