@@ -1,31 +1,29 @@
-const cors = require('cors');
+require('dotenv').config();
 const express = require('express');
-const connectDb = require('./configs/db');
+const cors = require('cors');
+const connectDB = require('./config/db');
 const studentRoutes = require('./routes/studentRoutes');
-const cronRoutes =  require('./routes/cronRoutes');
-const CronJobService=require('./services/cronJob');
+const cronRoutes = require('./routes/cronRoutes');
+const cronJobService = require('./services/cronJob');
 
+const app = express();
 
-const app  =  express();
-connectDb();
+connectDB();
 
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/students',studentRoutes);
-app.use('/api/cron',cronRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/cron', cronRoutes);
 
+cronJobService.startCronJob();
 
-CronJobService.startCronJob();
-
-app.use((err,req,res,next)=>{
+app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).json({
-        message:'Something went wrong!'
-    });
+    res.status(500).json({ message: 'Something went wrong!' });
 });
 
-const PORT = process.env.PORT ||  5000;
-app.listen(PORT,()=>{
-    console.log(`Server is Running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+}); 

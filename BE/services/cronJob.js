@@ -4,105 +4,159 @@ const Contest = require('../models/Contest');
 const Problem = require('../models/Problem');
 const codeforcesAPI = require('./codeforcesAPI');
 const emailService = require('./emailService');
-const cronConfig = require('../configs/cronConfig');
+const cronConfig = require('../config/cronConfig');
+const AnalyticsService = require('./analyticsService');
 
-class CronJobService {
-    constructor() {
-        this.job = null;
+let cronJob = null;
+
+const startCronJob = () => {
+    if (cronJob) {
+        cronJob.stop();
     }
 
-    async syncStudentData(student) {
+    console.log(`Starting cron job with schedule: ${cronConfig.schedule}`);
+    cronJob = cron.schedule(cronConfig.schedule, async () => {
         try {
-            const userInfo = await codeforcesAPI.getUserInfo(student.codeforcesHandle);
-            const userRating = await codeforcesAPI.getUserRating(student.codeforcesHandle);
-            const submissions = await codeforcesAPI.getUserSubmissions(student.codeforcesHandle);
+            console.log('Running scheduled data sync...');
+            const students = await Student.find({});
+            console.log(`Found ${students.length} students to sync`);
 
-            student.currentRating = userInfo.rating || 0;
-            student.maxRating = userInfo.maxRating || 0;
-            student.lastUpdated = new Date();
-            await student.save();
-
-            for (const contest of userRating) {
-                await Contest.findOneAndUpdate(
-                    { student: student._id, contestId: contest.contestId },
-                    {
-                        contestName: contest.contestName,
-                        rank: contest.rank,
-                        oldRating: contest.oldRating,
-                        newRating: contest.newRating,
-                        contestDate: new Date(contest.ratingUpdateTimeSeconds * 1000)
-                    },
-                    { upsert: true }
-                );
-            }
-            const solvedProblems = new Set();
-            for (const submission of submissions) {
-                if (submission.verdict === 'OK' && !solvedProblems.has(submission.problem.contestId + submission.problem.index)) {
-                    solvedProblems.add(submission.problem.contestId + submission.problem.index);
-                    await Problem.findOneAndUpdate(
-                        { student: student._id, problemId: submission.problem.contestId + submission.problem.index },
-                        {
-                            problemName: submission.problem.name,
-                            rating: submission.problem.rating || 0,
-                            tags: submission.problem.tags,
-                            solvedDate: new Date(submission.creationTimeSeconds * 1000),
-                            submissionId: submission.id
-                        },
-                        { upsert: true }
-                    );
-                }
-            }
-
-            const lastSubmission = submissions[0];
-            if (lastSubmission) {
-                const lastSubmissionDate = new Date(lastSubmission.creationTimeSeconds * 1000);
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-                if (lastSubmissionDate < sevenDaysAgo && student.emailRemindersEnabled) {
-                    await emailService.sendInactivityReminder(student);
-                    student.reminderCount += 1;
-                    await student.save();
+            for (const student of students) {
+                try {
+                    await syncStudentData(student._id);
+                } catch (error) {
+                    console.error(`Error syncing data for student ${student._id}:`, error);
                 }
             }
         } catch (error) {
-            console.error(`Error syncing data for student ${student.codeforcesHandle}:`, error);
+            console.error('Error in cron job:', error);
         }
+    }, {
+        timezone: cronConfig.timezone
+    });
+};
+
+const updateSchedule = async (newSchedule) => {
+    try {
+        console.log(`Updating cron schedule to: ${newSchedule}`);
+        cronConfig.schedule = newSchedule;
+        startCronJob();
+        return true;
+    } catch (error) {
+        console.error('Error updating cron schedule:', error);
+        throw error;
     }
+};
 
-    async startCronJob() {
-        if (this.job) {
-            this.job.stop();
+const syncStudentData = async (studentId) => {
+    try {
+        const student = await Student.findById(studentId);
+        if (!student) {
+            throw new Error('Student not found');
         }
 
-        this.job = cron.schedule(cronConfig.defaultSchedule, async () => {
-            console.log('Starting scheduled data sync...');
-            const students = await Student.find();
+        console.log(`Syncing data for student: ${student.name} (${student.codeforcesHandle})`);
+
+        const [userInfo, userRatings] = await Promise.all([
+            codeforcesAPI.getUserInfo(student.codeforcesHandle),
+            codeforcesAPI.getUserRating(student.codeforcesHandle)
+        ]);
+
+        if (!userInfo) {
+            throw new Error('Failed to fetch user info');
+        }
+
+        student.currentRating = userInfo.rating || 0;
+        student.maxRating = Math.max(student.maxRating || 0, userInfo.rating || 0);
+        student.lastUpdated = new Date();
+
+
+        if (userRatings && userRatings.length > 0) {
+            student.totalProblemsSolved = userRatings.length;
+
+            const recentContests = userRatings.slice(0, 10);
             
-            for (const student of students) {
-                await this.syncStudentData(student);
+            for (const rating of recentContests) {
+                try {
+                    const existingContest = await Contest.findOne({
+                        student: student._id,
+                        contestId: rating.contestId
+                    });
+
+                    if (!existingContest) {
+                        const contest = new Contest({
+                            student: student._id,
+                            contestId: rating.contestId,
+                            contestName: rating.contestName,
+                            rank: rating.rank,
+                            oldRating: rating.oldRating,
+                            newRating: rating.newRating,
+                            problemsSolved: 0, 
+                            problemsUnsolved: 0, 
+                            contestDate: new Date(rating.ratingUpdateTimeSeconds * 1000),
+                        });
+                        await contest.save();
+                    }
+                } catch (error) {
+                    console.error(`Error processing contest ${rating.contestId}:`, error);
+                }
             }
-            
-            console.log('Scheduled data sync completed.');
-        }, cronConfig.options);
-    }
-
-    updateSchedule(newSchedule) {
-        if (this.job) {
-            this.job.stop();
         }
 
-        this.job = cron.schedule(newSchedule, async () => {
-            console.log('Starting scheduled data sync with new schedule...');
-            const students = await Student.find();
-            
-            for (const student of students) {
-                await this.syncStudentData(student);
-            }
-            
-            console.log('Scheduled data sync completed.');
-        }, cronConfig.options);
-    }
-}
+        const submissions = await codeforcesAPI.getUserSubmissions(student.codeforcesHandle, 100);
+        if (submissions) {
+            const solvedProblemIds = new Set();
+            const problemSubmissionMap = new Map();
 
-module.exports = new CronJobService(); 
+            for (const submission of submissions) {
+                if (submission.verdict === 'OK') {
+                    const problemId = `${submission.problem.contestId}-${submission.problem.index}`;
+                    
+                    if (!problemSubmissionMap.has(problemId) || 
+                        submission.creationTimeSeconds < problemSubmissionMap.get(problemId).creationTimeSeconds) {
+                        problemSubmissionMap.set(problemId, submission);
+                    }
+                    solvedProblemIds.add(problemId);
+                }
+            }
+
+            for (const [problemId, submission] of problemSubmissionMap) {
+                try {
+                    const existingProblem = await Problem.findOne({
+                        student: student._id,
+                        problemId: problemId
+                    });
+
+                    if (!existingProblem) {
+                        const problem = new Problem({
+                            student: student._id,
+                            problemId: problemId,
+                            problemName: submission.problem.name,
+                            rating: submission.problem.rating || 0,
+                            tags: submission.problem.tags || [],
+                            solvedDate: new Date(submission.creationTimeSeconds * 1000),
+                            submissionId: submission.id
+                        });
+                        await problem.save();
+                    }
+                } catch (error) {
+                    console.error(`Error processing problem ${problemId}:`, error);
+                }
+            }
+        }
+
+        await student.save();
+        console.log(`Successfully synced data for student: ${student.name}`);
+
+        return student;
+    } catch (error) {
+        console.error('Error syncing student data:', error);
+        throw error;
+    }
+};
+
+module.exports = {
+    startCronJob,
+    updateSchedule,
+    syncStudentData
+}; 
