@@ -1,17 +1,14 @@
-import React , {useState,useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
-  DialogTrigger
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import api from '../utils/api'
-
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Box
+} from '@mui/material';
+import api from '../utils/api';
 
 const StudentFormModal = ({ open, onClose, student, onSuccess }) => {
   const [formData, setFormData] = useState({
