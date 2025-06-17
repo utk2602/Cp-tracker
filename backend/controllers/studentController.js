@@ -4,6 +4,7 @@ const Problem = require('../models/Problem');
 const { Parser } = require('json2csv');
 const cronJobService = require('../services/cronJob');
 
+// Get all students
 exports.getAllStudents = async (req, res) => {
     try {
         const students = await Student.find().select('-__v');
@@ -13,6 +14,7 @@ exports.getAllStudents = async (req, res) => {
     }
 };
 
+// Get a student by ID
 exports.getStudentById = async (req, res) => {
     try {
         const student = await Student.findById(req.params.id);
@@ -25,8 +27,10 @@ exports.getStudentById = async (req, res) => {
     }
 };
 
+// Create a new student and trigger sync
 exports.createStudent = async (req, res) => {
     try {
+        // Validate required fields
         const { name, email, phone, codeforcesHandle } = req.body;
         
         if (!name || !email || !phone || !codeforcesHandle) {
@@ -38,6 +42,7 @@ exports.createStudent = async (req, res) => {
         const student = new Student(req.body);
         await student.save();
 
+        // Trigger immediate sync
         await cronJobService.syncStudentData(student);
 
         res.status(201).json(student);
@@ -46,6 +51,7 @@ exports.createStudent = async (req, res) => {
     }
 };
 
+// Update student and optionally re-sync if handle changed
 exports.updateStudent = async (req, res) => {
     try {
         const student = await Student.findById(req.params.id);
@@ -53,9 +59,11 @@ exports.updateStudent = async (req, res) => {
             return res.status(404).json({ message: 'Student not found' });
         }
 
+        // Validate required fields if they're being updated
         const { name, email, phone, codeforcesHandle } = req.body;
         const updatedFields = { name, email, phone, codeforcesHandle };
         
+        // Check if any required field is being set to empty/null
         for (const [field, value] of Object.entries(updatedFields)) {
             if (value !== undefined && (!value || value === '')) {
                 return res.status(400).json({ 
@@ -81,6 +89,7 @@ exports.updateStudent = async (req, res) => {
     }
 };
 
+// Delete student and associated data
 exports.deleteStudent = async (req, res) => {
     try {
         const student = await Student.findById(req.params.id);
@@ -99,6 +108,7 @@ exports.deleteStudent = async (req, res) => {
     }
 };
 
+// Get student profile including contests and problems
 exports.getStudentProfile = async (req, res) => {
     try {
         const student = await Student.findById(req.params.id);
@@ -109,6 +119,7 @@ exports.getStudentProfile = async (req, res) => {
         const contests = await Contest.find({ student: student._id }).sort({ contestDate: -1 });
         const problems = await Problem.find({ student: student._id }).sort({ solvedDate: -1 });
 
+        // Transform contests to match frontend expectations
         const transformedContests = contests.map(contest => ({
             id: contest._id,
             name: contest.contestName,
@@ -120,6 +131,7 @@ exports.getStudentProfile = async (req, res) => {
             problemsUnsolved: contest.problemsUnsolved
         }));
 
+        // Transform problems to match frontend expectations
         const transformedProblems = problems.map(problem => ({
             id: problem._id,
             name: problem.problemName,
@@ -128,8 +140,10 @@ exports.getStudentProfile = async (req, res) => {
             tags: problem.tags
         }));
 
+        // Create submissions data for heatmap (group by date)
         const submissionsByDate = {};
         problems.forEach(problem => {
+            // Ensure solvedDate is a valid Date object before proceeding
             if (problem.solvedDate && !isNaN(new Date(problem.solvedDate)) && new Date(problem.solvedDate).getTime() > 0) {
                 const date = new Date(problem.solvedDate).toISOString().split('T')[0];
                 submissionsByDate[date] = (submissionsByDate[date] || 0) + 1;
@@ -160,6 +174,7 @@ exports.getStudentProfile = async (req, res) => {
     }
 };
 
+// Export student data as CSV
 exports.downloadCSV = async (req, res) => {
     try {
         const students = await Student.find().select('-__v');
@@ -185,6 +200,7 @@ exports.downloadCSV = async (req, res) => {
     }
 };
 
+// Toggle email reminders for a student
 exports.toggleEmailReminders = async (req, res) => {
     try {
         const student = await Student.findById(req.params.id);

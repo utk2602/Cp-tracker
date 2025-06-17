@@ -31,7 +31,8 @@ class EmailService {
             };
 
             await this.transporter.sendMail(mailOptions);
-
+            
+            // Log successful email
             await EmailLog.create({
                 student: student._id,
                 emailType: 'INACTIVITY_REMINDER',

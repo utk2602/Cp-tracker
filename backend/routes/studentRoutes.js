@@ -1,23 +1,33 @@
 const express = require('express');
 const router = express.Router();
-const studentController = require('../Controllers/studentController');
+const studentController = require('../controllers/studentController');
 const Student = require('../models/Student');
 
+// Get all students
 router.get('/', studentController.getAllStudents);
 
+// Get student by ID
 router.get('/:id', studentController.getStudentById);
 
+// Create new student
 router.post('/', studentController.createStudent);
 
+// Update student
 router.put('/:id', studentController.updateStudent);
 
+// Delete student
 router.delete('/:id', studentController.deleteStudent);
+
+// Get student profile with contests and problems
 router.get('/:id/profile', studentController.getStudentProfile);
 
+// Download students data as CSV
 router.get('/download/csv', studentController.downloadCSV);
 
+// Toggle email reminders for a student
 router.post('/:id/toggle-reminders', studentController.toggleEmailReminders);
 
+// Check if student exists
 router.get('/:id/check', async (req, res) => {
     try {
         const student = await Student.findById(req.params.id);

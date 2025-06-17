@@ -57,6 +57,7 @@ const syncStudentData = async (studentId) => {
 
         console.log(`Syncing data for student: ${student.name} (${student.codeforcesHandle})`);
 
+        // Fetch user info and ratings in parallel for speed
         const [userInfo, userRatings] = await Promise.all([
             codeforcesAPI.getUserInfo(student.codeforcesHandle),
             codeforcesAPI.getUserRating(student.codeforcesHandle)
@@ -66,24 +67,28 @@ const syncStudentData = async (studentId) => {
             throw new Error('Failed to fetch user info');
         }
 
+        // Update basic student data
         student.currentRating = userInfo.rating || 0;
         student.maxRating = Math.max(student.maxRating || 0, userInfo.rating || 0);
         student.lastUpdated = new Date();
 
-
+        // Only process contests if we have ratings data
         if (userRatings && userRatings.length > 0) {
             student.totalProblemsSolved = userRatings.length;
-
+            
+            // Process only the latest 10 contests for speed
             const recentContests = userRatings.slice(0, 10);
             
             for (const rating of recentContests) {
                 try {
+                    // Check if contest already exists
                     const existingContest = await Contest.findOne({
                         student: student._id,
                         contestId: rating.contestId
                     });
 
                     if (!existingContest) {
+                        // Create new contest record without fetching standings (faster)
                         const contest = new Contest({
                             student: student._id,
                             contestId: rating.contestId,
@@ -91,8 +96,8 @@ const syncStudentData = async (studentId) => {
                             rank: rating.rank,
                             oldRating: rating.oldRating,
                             newRating: rating.newRating,
-                            problemsSolved: 0, 
-                            problemsUnsolved: 0, 
+                            problemsSolved: 0, // Default value
+                            problemsUnsolved: 0, // Default value
                             contestDate: new Date(rating.ratingUpdateTimeSeconds * 1000),
                         });
                         await contest.save();
@@ -103,6 +108,7 @@ const syncStudentData = async (studentId) => {
             }
         }
 
+        // Fetch only recent submissions (last 100) for speed
         const submissions = await codeforcesAPI.getUserSubmissions(student.codeforcesHandle, 100);
         if (submissions) {
             const solvedProblemIds = new Set();
@@ -120,6 +126,7 @@ const syncStudentData = async (studentId) => {
                 }
             }
 
+            // Create problem records for new solved problems only
             for (const [problemId, submission] of problemSubmissionMap) {
                 try {
                     const existingProblem = await Problem.findOne({
@@ -145,6 +152,7 @@ const syncStudentData = async (studentId) => {
             }
         }
 
+        // Save updated student data
         await student.save();
         console.log(`Successfully synced data for student: ${student.name}`);
 

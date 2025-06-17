@@ -33,6 +33,7 @@ const problemSchema = new mongoose.Schema({
     timestamps: true
 });
 
+// Compound index to ensure unique problems per student
 problemSchema.index({ student: 1, problemId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Problem', problemSchema); 

@@ -7,6 +7,7 @@ exports.updateCronSchedule = async (req, res) => {
     try {
         const { schedule } = req.body;
         
+        // Validate cron schedule format
         if (!cron.validate(schedule)) {
             return res.status(400).json({ message: 'Invalid cron schedule format' });
         }
@@ -38,6 +39,7 @@ exports.triggerManualSync = async (req, res) => {
         console.log('Starting manual sync for student ID:', studentId);
         
         if (studentId) {
+            // Sync specific student
             console.log('Finding student in database...');
             const student = await Student.findById(studentId);
             
@@ -59,7 +61,9 @@ exports.triggerManualSync = async (req, res) => {
                 res.json({ message: 'Student data sync completed' });
             } catch (syncError) {
                 console.error('Error during sync process:', syncError);
-                                if (syncError.message.includes('Codeforces is temporarily blocking requests')) {
+                
+                // Handle Codeforces blocking specifically
+                if (syncError.message.includes('Codeforces is temporarily blocking requests')) {
                     return res.status(503).json({ 
                         message: 'Codeforces is temporarily blocking requests. Please try again later.',
                         error: syncError.message 
@@ -69,7 +73,7 @@ exports.triggerManualSync = async (req, res) => {
                 throw syncError;
             }
         } else {
-        
+            // Sync all students
             const students = await Student.find();
             for (const student of students) {
                 await cronJobService.syncStudentData(student);
@@ -83,6 +87,7 @@ exports.triggerManualSync = async (req, res) => {
             studentId: req.params.studentId
         });
         
+        // Handle Codeforces blocking specifically
         if (error.message.includes('Codeforces is temporarily blocking requests')) {
             return res.status(503).json({ 
                 message: 'Codeforces is temporarily blocking requests. Please try again later.',
@@ -116,6 +121,7 @@ exports.updateSchedule = async (req, res) => {
       return res.status(400).json({ message: 'Schedule is required' });
     }
 
+    // Validate schedule format
     if (!cronConfig.availableSchedules.some(s => s.value === schedule)) {
       return res.status(400).json({ message: 'Invalid schedule format' });
     }
@@ -135,7 +141,8 @@ exports.syncStudentData = async (req, res) => {
     res.json({ message: 'Student data synced successfully' });
   } catch (error) {
     console.error('Error syncing student data:', error);
-   
+    
+    // Handle Codeforces blocking specifically
     if (error.message.includes('Codeforces is temporarily blocking requests')) {
       return res.status(503).json({ 
         message: 'Codeforces is temporarily blocking requests. Please try again later.',
