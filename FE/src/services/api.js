@@ -1,71 +1,75 @@
 import axios from 'axios';
-const API_URL ='http://localhost:5000/api';
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const api = axios.create({
-    baseURL: API_URL,
-    headers:{
-        'Content-Type':'application/json',
-    },
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
+// Student API endpoints
 export const studentAPI = {
-    getAllStudents: async()=>{
-        const response = await api.get('/students');
-        return response.data;
-    },
-    createStudent: async(studentData)=>{
-        const response = await api.post('/students',studentData);
-        return response.data;
-    },
-    updateStudent: async (id,studentData)=>{
-        const response = await api.put(`/students/${id}`,studentData);
-        return response.data;
-    },
-    deleteStudent: async(id)=>{
-        const response = await api.delete(`/students/${id}`);
-        return response.data;
-    },
-    getStudentProfile : async(id)=>{
-        const response = await api.get(`/studentss/${id}/profile`);
-        return response.data;
-    },
-    downloadCSV: async()=>{
-        const response = await api.get(`/students/download/csv`,{
-            responseType:'blob'
-        });
-        return response.data;
-    },
-    toggleEmailReminders:async(id)=>{
-        const response = await api.post(`/students/${id}/toggle-reminders`);
-        return response.data;
-    }
+  // Get all students
+  getAllStudents: () => api.get('/students'),
+  
+  // Get student by ID
+  getStudentById: (id) => api.get(`/students/${id}`),
+  
+  // Create new student
+  createStudent: (studentData) => api.post('/students', studentData),
+  
+  // Update student
+  updateStudent: (id, studentData) => api.put(`/students/${id}`, studentData),
+  
+  // Delete student
+  deleteStudent: (id) => api.delete(`/students/${id}`),
+  
+  // Get student profile with contests and problems
+  getStudentProfile: (id) => api.get(`/students/${id}/profile`),
+  
+  // Download students data as CSV
+  downloadCSV: () => api.get('/students/download/csv'),
+  
+  // Toggle email reminders for a student
+  toggleEmailReminders: (id) => api.post(`/students/${id}/toggle-reminders`),
+  
+  // Check if student exists
+  checkStudent: (id) => api.get(`/students/${id}/check`),
+  
+  // Sync individual student data - using the correct backend endpoint
+  syncStudent: (id) => api.post(`/cron/sync/${id}`),
 };
 
-export const cronAPI ={
-    updateCronSchedule:async(schedule)=>{
-        const response =  await api.put('/cron/schedule',{schedule});
-        return response.data;
-    },
-    getCurrentSchedule: async()=>{
-        const response = await api.get('/cron/schedule');
-        return response.data;
-    },
-    triggerManualSync:  async()=>{
-        const response= await api.post(`/cron/sync`);
-        return response.data;
-    },
-    triggerManualSyncForStudent:async (studentId) =>{
-        const response = await api.post(`/cron/sync/${studentId}`);
-        return response.data;
-    }
+// Cron API endpoints - updated to match backend routes
+export const cronAPI = {
+  // Get cron settings - using the correct backend endpoint
+  getCronSettings: () => api.get('/cron/schedule'),
+  
+  // Update cron settings - using the correct backend endpoint
+  updateCronSettings: (settings) => api.put('/cron/schedule', settings),
+  
+  // Trigger manual sync - using the correct backend endpoint
+  triggerSync: () => api.post('/cron/sync'),
 };
 
-api.interceptors.response.use(
-    (response)=> response,
-    (error)=>{
-        const errorMessage = error.response?.data?.message|| 'An error occured';
-        console.error('API error:',errorMessage);
-        return Promise.reject(error);
-    }
-);
-export default api;
+// Analytics API endpoints
+export const analyticsAPI = {
+  // Get leaderboard
+  getLeaderboard: () => api.get('/analytics/leaderboard'),
+  
+  // Get department statistics
+  getDepartmentStats: () => api.get('/analytics/department-stats'),
+  
+  // Get global statistics
+  getGlobalStats: () => api.get('/analytics/global-stats'),
+  
+  // Get student achievements
+  getStudentAchievements: (studentId) => api.get(`/analytics/achievements/${studentId}`),
+  
+  // Get student analytics
+  getStudentAnalytics: (studentId) => api.get(`/analytics/student/${studentId}`),
+};
+
+export default api; 
