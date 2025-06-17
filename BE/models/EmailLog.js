@@ -1,31 +1,30 @@
 const mongoose = require('mongoose');
-const { type } = require('os');
 
 const emailLogSchema = new mongoose.Schema({
-    student:{
-        type :mongoose.Schema.Types.ObjectId,
-        ref:'Strudent',
-        required:true
+    student: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Student',
+        required: true
     },
-    emialType:{
+    emailType: {
         type: String,
-        enum:['INACTIVITY_REMINDER'],
-        required:true
+        enum: ['INACTIVITY_REMINDER'],
+        required: true
     },
-    sentAt:{
-        type:Date,
-        default:Date.now
+    sentAt: {
+        type: Date,
+        default: Date.now
     },
-    status:{
-        type:String,
-        enum:['SENT','FAILED'],
-        required:true
+    status: {
+        type: String,
+        enum: ['SENT', 'FAILED'],
+        required: true
     },
-    errorMessage:{
-        type:String
+    errorMessage: {
+        type: String
     }
-},{
-    timestamps:true
+}, {
+    timestamps: true
 });
 
-module.exports = mongoose.model('EmailLog', emailLogSchema);
+module.exports = mongoose.model('EmailLog', emailLogSchema); 

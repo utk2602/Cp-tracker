@@ -1,40 +1,38 @@
-const { time } = require('console');
 const mongoose = require('mongoose');
-const { type } = require('os');
 
 const problemSchema = new mongoose.Schema({
-    student:{
+    student: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Student',
-        required: true,
+        required: true
     },
-    problemId:{
+    problemId: {
         type: String,
-        required: true, 
+        required: true
     },
-    problemName:{
+    problemName: {
         type: String,
-        required: true,
+        required: true
     },
-    rating:{
+    rating: {
         type: Number,
-        required: true,
+        required: true
     },
-    tags:[{
-        type: String,
-        required: true,
+    tags: [{
+        type: String
     }],
-    solvedDate:{
+    solvedDate: {
         type: Date,
-        required:true,
+        required: true
     },
-    submissionId:{
+    submissionId: {
         type: Number,
-        required: true,
+        required: true
     }
-},{
-    timestamps: true,
+}, {
+    timestamps: true
 });
 
 problemSchema.index({ student: 1, problemId: 1 }, { unique: true });
-const Problem = mongoose.model('Problem', problemSchema);
+
+module.exports = mongoose.model('Problem', problemSchema); 
