@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import {
+  Box,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+  Chip,
+  Link,
+  Tooltip
+} from '@mui/material';
 import { format } from 'date-fns';
 
 const ContestHistory = ({ contests }) => {
@@ -10,45 +20,43 @@ const ContestHistory = ({ contests }) => {
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    applyFilter();
+    filterContests();
   }, [contests, filter]);
 
-  const applyFilter = () => {
+  const filterContests = () => {
     const now = new Date();
     let cutoffDate;
 
     switch (filter) {
       case '7':
-        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        cutoffDate = new Date(now.setDate(now.getDate() - 7));
         break;
       case '30':
-        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        cutoffDate = new Date(now.setDate(now.getDate() - 30));
         break;
       case '90':
-        cutoffDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        break;
-      case '365':
-        cutoffDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        cutoffDate = new Date(now.setDate(now.getDate() - 90));
         break;
       default:
         cutoffDate = new Date(0);
     }
 
-    const filtered = contests
-      .filter(contest => new Date(contest.contestDate) >= cutoffDate)
-      .sort((a, b) => new Date(b.contestDate) - new Date(a.contestDate));
+    setFilteredContests(
+      contests
+        .filter(contest => new Date(contest.contestDate) >= cutoffDate)
+        .sort((a, b) => new Date(b.contestDate) - new Date(a.contestDate))
+    );
+  };
 
-    setFilteredContests(filtered);
+  const getRatingChangeColor = (change) => {
+    if (change > 0) return 'success';
+    if (change < 0) return 'error';
+    return 'default';
+  };
 
-    const getRatingChangeColor =(change)=>{
-        if(change>0) return 'success';
-        if(change<0) return 'error';
-        return 'default';
-    };
-    const getRatingChageText = (oldRating, newRating) => {
-        const change = newRating - oldRating;
-        return `${change > 0 ? '+' : ''}${change}`;
-    };
+  const getRatingChangeText = (oldRating, newRating) => {
+    const change = newRating - oldRating;
+    return `${change > 0 ? '+' : ''}${change}`;
   };
 
   return (
@@ -118,4 +126,4 @@ const ContestHistory = ({ contests }) => {
   );
 };
 
-export default ContestHistory;
+export default ContestHistory; 

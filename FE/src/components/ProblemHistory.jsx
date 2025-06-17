@@ -1,58 +1,50 @@
-import React , {useState,useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
-
-import {
+  Box,
+  Typography,
+  FormControl,
+  Select,
+  MenuItem,
+  Paper,
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
-  TableHeader,
   TableRow,
-} from "@/components/ui/table";
+  Chip
+} from '@mui/material';
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+const ProblemHistory = ({ problems: allProblems }) => {
+  const [filter, setFilter] = useState('all'); 
+  const [filteredProblems, setFilteredProblems] = useState([]);
 
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Typography } from "@/components/ui/typography"; 
+  useEffect(() => {
+    let filtered = allProblems;
 
+    if (filter !== 'all') {
+      filtered = allProblems.filter(problem => {
+        const problemDate = new Date(problem.solvedDate);
+        const now = new Date();
+        const daysAgo = new Date(now.setDate(now.getDate() - parseInt(filter)));
+        return problemDate >= daysAgo;
+      });
+    }
 
-const ProblemHistory = ({ problems:allProblems})=>{
-    const[filter,setFilter]=useState('all');
-    const[filteredProblems,setFilteredProblems]=useState([]);
+    setFilteredProblems(filtered);
+  }, [allProblems, filter]);
 
-    useEffect(()=>{
-        let filtered = allProblems;
-        if(filter !=='all'){
-            filtered =allProblems.filter(problem =>{
-                const problemDate =  new Date(problem.solveDate);
-                const now =  new Date();
-                const days= new Date(now.setDate(now.getDate()-parseInt(filter)));
-                return problemDate >= days;
-            });
-        }
-        setFilteredProblems(filtered);
-    },[allProblems,filter]);
-
-    const getDifficultyColor = (difficulty)=>{
-        const colors ={
-            easy: 'success',
-            medium : 'warning',
-            hard:'error'
-        };
-        return colors[difficulty] || 'default';
+  const getDifficultyColor = (difficulty) => {
+    const colors = {
+      easy: 'success',
+      medium: 'warning',
+      hard: 'error'
     };
-    return(
-       <Box sx={{ p: 2 }}>
+    return colors[difficulty] || 'default';
+  };
+
+  return (
+    <Box sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h6">Problem History</Typography>
         <FormControl sx={{ minWidth: 120 }}>
@@ -122,8 +114,7 @@ const ProblemHistory = ({ problems:allProblems})=>{
         </Table>
       </TableContainer>
     </Box>
-    );
+  );
 };
 
-export default ProblemHistory;
-
+export default ProblemHistory; 
